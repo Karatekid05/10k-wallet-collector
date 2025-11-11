@@ -216,38 +216,54 @@ async function registerCommands() {
 client.on('interactionCreate', async (interaction) => {
 	try {
 		if (interaction.isChatInputCommand()) {
+			console.log(`[COMMAND] ${interaction.user.username} used /${interaction.commandName}`);
+			
 			// Handle setup commands for each tier
 			const tierConfig = Object.values(TIER_CONFIGS).find(
 				(config) => config.commandName === interaction.commandName
 			);
 			
 			if (tierConfig) {
-				const submitButton = new ButtonBuilder()
-					.setCustomId(`submit_wallet_${tierConfig.tier}`)
-					.setLabel('Submit Wallet')
-					.setStyle(ButtonStyle.Success);
+				try {
+					const submitButton = new ButtonBuilder()
+						.setCustomId(`submit_wallet_${tierConfig.tier}`)
+						.setLabel('Submit Wallet')
+						.setStyle(ButtonStyle.Success);
 
-				const statusButton = new ButtonBuilder()
-					.setCustomId(`check_status_${tierConfig.tier}`)
-					.setLabel('Check Status')
-					.setStyle(ButtonStyle.Primary);
+					const statusButton = new ButtonBuilder()
+						.setCustomId(`check_status_${tierConfig.tier}`)
+						.setLabel('Check Status')
+						.setStyle(ButtonStyle.Primary);
 
-				const row = new ActionRowBuilder().addComponents(submitButton, statusButton);
+					const row = new ActionRowBuilder().addComponents(submitButton, statusButton);
 
-				const embed = new EmbedBuilder()
-					.setTitle(`${tierConfig.tier} Tier - Submit your EVM Wallet`)
-					.setDescription('Click the button below to submit your wallet address.')
-					.setColor(0x2b2d31);
+					const embed = new EmbedBuilder()
+						.setTitle(`${tierConfig.tier} Tier - Submit your EVM Wallet`)
+						.setDescription('Click the button below to submit your wallet address.')
+						.setColor(0x2b2d31);
 
-				await interaction.reply({
-					embeds: [embed],
-					components: [row],
-					allowedMentions: { parse: [] },
-				});
+					await interaction.reply({
+						embeds: [embed],
+						components: [row],
+						allowedMentions: { parse: [] },
+					});
+					
+					console.log(`[SUCCESS] Setup message sent for ${tierConfig.tier}`);
+				} catch (err) {
+					console.error(`[ERROR] Failed to send setup message:`, err);
+					if (!interaction.replied) {
+						await interaction.reply({ 
+							content: '❌ An error occurred. Please try again.', 
+							ephemeral: true 
+						});
+					}
+				}
 			}
 		}
 
 		if (interaction.isButton()) {
+			console.log(`[BUTTON] ${interaction.user.username} clicked: ${interaction.customId}`);
+			
 			// Handle submit wallet button
 			if (interaction.customId.startsWith('submit_wallet_')) {
 				const tier = interaction.customId.replace('submit_wallet_', '');
@@ -337,6 +353,7 @@ client.on('interactionCreate', async (interaction) => {
 		}
 
 		if (interaction.type === InteractionType.ModalSubmit && interaction.customId.startsWith('wallet_modal_')) {
+			console.log(`[MODAL] ${interaction.user.username} submitted wallet for ${interaction.customId}`);
 			await interaction.deferReply({ ephemeral: true });
 			
 			const tier = interaction.customId.replace('wallet_modal_', '');
@@ -412,9 +429,11 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 // Warm up Sheets (creates sheet and headers if needed) and register commands
-await ensureSheetSetup().catch((err) => {
-	console.error('Sheets warm-up failed:', err);
-});
+console.log('Setting up Google Sheets...');
+ensureSheetSetup()
+	.then(() => console.log('✅ Google Sheets ready'))
+	.catch((err) => console.error('⚠️  Sheets warm-up failed (will retry on first use):', err.message));
+
 await registerCommands();
 client.login(token);
 
