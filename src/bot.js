@@ -225,6 +225,7 @@ client.on('interactionCreate', async (interaction) => {
 			
 			if (tierConfig) {
 				try {
+					// Respond immediately - we don't need to wait for anything
 					const submitButton = new ButtonBuilder()
 						.setCustomId(`submit_wallet_${tierConfig.tier}`)
 						.setLabel('Submit Wallet')
@@ -242,6 +243,7 @@ client.on('interactionCreate', async (interaction) => {
 						.setDescription('Click the button below to submit your wallet address.')
 						.setColor(0x2b2d31);
 
+					// Reply immediately
 					await interaction.reply({
 						embeds: [embed],
 						components: [row],
@@ -249,14 +251,17 @@ client.on('interactionCreate', async (interaction) => {
 					});
 					
 					console.log(`[SUCCESS] Setup message sent for ${tierConfig.tier}`);
+					
 				} catch (err) {
-					console.error(`[ERROR] Failed to send setup message:`, err);
-					if (!interaction.replied) {
-						await interaction.reply({ 
-							content: '❌ An error occurred. Please try again.', 
-							ephemeral: true 
-						});
-					}
+					console.error(`[ERROR] Exception in setup command:`, err);
+					try {
+						if (!interaction.replied && !interaction.deferred) {
+							await interaction.reply({ 
+								content: '❌ An error occurred. Please try again.', 
+								ephemeral: true 
+							});
+						}
+					} catch {}
 				}
 			}
 		}

@@ -6,7 +6,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/bot.js",
     "start": "node src/bot.js",
-    "register": "node scripts/register-commands.js"
+    "register": "node scripts/register-commands.js",
+    "check-commands": "node scripts/check-commands.js",
+    "reset-commands": "node scripts/reset-commands.js"
   },
   "repository": {
     "type": "git",
