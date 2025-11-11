@@ -115,32 +115,37 @@ export async function upsertWallet({ discordId, discordUsername, wallet, tier, r
 		return { action: 'skipped', reason: 'invalid_tier' };
 	}
 	
-	// Check all sheets to see if user exists elsewhere
-	let existingLocation = null;
-	for (const sheetName of Object.values(SHEET_NAMES)) {
-		const range = `${sheetName}!A2:D`;
-		const resp = await callWithRetry(() => sheetsApi.spreadsheets.values.get({ spreadsheetId, range }), 'values.get check');
-		const rows = resp.data.values || [];
-		
-		for (let i = 0; i < rows.length; i++) {
-			if (rows[i][1] === discordId) {
-				existingLocation = { sheetName, rowNumber: i + 2 };
-				break;
-			}
-		}
-		if (existingLocation) break;
-	}
-	
-	// If user exists in a different sheet, delete from old sheet
-	if (existingLocation && existingLocation.sheetName !== targetSheet) {
-		await deleteRowFromSheet(existingLocation.sheetName, existingLocation.rowNumber);
-		existingLocation = null; // treat as new insert
-	}
-	
+	// Check ONLY the target sheet to see if user already has an entry there
+	// This allows stacking (same user in multiple sheets with different wallets)
 	const targetRange = `${targetSheet}!A2:D`;
+	const resp = await callWithRetry(() => sheetsApi.spreadsheets.values.get({ 
+		spreadsheetId, 
+		range: targetRange 
+	}), 'values.get check target');
+	const rows = resp.data.values || [];
 	
-	if (!existingLocation) {
-		// Insert new row in target sheet
+	let existingRowInTarget = null;
+	for (let i = 0; i < rows.length; i++) {
+		if (rows[i][1] === discordId) {
+			existingRowInTarget = i + 2; // actual row number
+			break;
+		}
+	}
+	
+	if (existingRowInTarget) {
+		// Update existing row in target sheet
+		const updateRange = `${targetSheet}!A${existingRowInTarget}:D${existingRowInTarget}`;
+		await callWithRetry(() => sheetsApi.spreadsheets.values.update({
+			spreadsheetId,
+			range: updateRange,
+			valueInputOption: 'RAW',
+			requestBody: {
+				values: [[discordUsername, discordId, roleName ?? '', wallet]],
+			},
+		}), 'values.update upsert');
+		return { action: 'updated' };
+	} else {
+		// Insert new row in target sheet (allows stacking across sheets)
 		await callWithRetry(() => sheetsApi.spreadsheets.values.append({
 			spreadsheetId,
 			range: targetRange,
@@ -152,18 +157,6 @@ export async function upsertWallet({ discordId, discordUsername, wallet, tier, r
 		}), 'values.append upsert');
 		return { action: 'inserted' };
 	}
-	
-	// Update existing row in same sheet
-	const updateRange = `${targetSheet}!A${existingLocation.rowNumber}:D${existingLocation.rowNumber}`;
-	await callWithRetry(() => sheetsApi.spreadsheets.values.update({
-		spreadsheetId,
-		range: updateRange,
-		valueInputOption: 'RAW',
-		requestBody: {
-			values: [[discordUsername, discordId, roleName ?? '', wallet]],
-		},
-	}), 'values.update upsert');
-	return { action: 'updated' };
 }
 
 // Helper function to delete a row from a specific sheet
