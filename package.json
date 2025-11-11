@@ -1,0 +1,32 @@
+{
+  "name": "discord-wallet-collector",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon src/bot.js",
+    "start": "node src/bot.js",
+    "register": "node scripts/register-commands.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Karatekid05/discord-wallet-collector.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Karatekid05/discord-wallet-collector/issues"
+  },
+  "homepage": "https://github.com/Karatekid05/discord-wallet-collector#readme",
+  "description": "",
+  "dependencies": {
+    "discord.js": "^14.22.1",
+    "dotenv": "^17.2.2",
+    "googleapis": "^159.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
