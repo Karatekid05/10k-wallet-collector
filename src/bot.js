@@ -11,6 +11,9 @@ if (!token || !clientId) {
 	process.exit(1);
 }
 
+// Special role that allows stacking (can submit in FCFS even with higher tier)
+const FIRE_ROLE_ID = '1411717220605886616';
+
 // Define role configurations for each tier
 const TIER_CONFIGS = {
 	'2GTD': {
@@ -28,6 +31,7 @@ const TIER_CONFIGS = {
 			'1362770935886774284',
 			'1407649035657019463',
 			'1284341434564083763',
+			'1411997961399046154',
 		],
 		commandName: 'setup-gtd',
 		channelLink: 'https://discord.com/channels/1282268775709802568/1437876707502592143',
@@ -37,7 +41,7 @@ const TIER_CONFIGS = {
 		roleIds: [
 			'1334873797085626398',
 			'1408402916452208702',
-			'1411717220605886616',
+			FIRE_ROLE_ID, // Fire role - allows stacking
 		],
 		commandName: 'setup-fcfs',
 		channelLink: 'https://discord.com/channels/1282268775709802568/1437876834476884100',
@@ -134,6 +138,8 @@ async function getUserHighestTier(interaction) {
 
 // Check if user can submit to a specific tier (considering hierarchy)
 async function canUserSubmitToTier(interaction, targetTier) {
+	const userRoleIds = await getMemberRoleIds(interaction);
+	const hasFire = userRoleIds.has(FIRE_ROLE_ID);
 	const highestTier = await getUserHighestTier(interaction);
 	
 	if (!highestTier) {
@@ -150,8 +156,21 @@ async function canUserSubmitToTier(interaction, targetTier) {
 	const userPriority = tierPriority[highestTier];
 	const targetPriority = tierPriority[targetTier];
 	
+	// SPECIAL CASE: Fire role allows stacking
+	// Users with 2GTD/GTD + Fire can ALSO submit to FCFS
+	if (targetTier === 'FCFS' && hasFire && userPriority < targetPriority) {
+		// User has higher tier (2GTD or GTD) + Fire role
+		// Allow them to submit to FCFS as well (stacking)
+		return { 
+			allowed: true, 
+			tier: 'FCFS',
+			isStacking: true,
+			primaryTier: highestTier
+		};
+	}
+	
 	if (userPriority < targetPriority) {
-		// User has a higher tier, cannot submit to lower tier
+		// User has a higher tier, cannot submit to lower tier (unless Fire exception above)
 		return { 
 			allowed: false, 
 			reason: 'higher_tier_available',
@@ -416,7 +435,19 @@ client.on('interactionCreate', async (interaction) => {
 			if (result.action === 'skipped') {
 				await interaction.editReply('❌ Failed to save wallet. Please try again.');
 			} else {
-				await interaction.editReply(`✅ Wallet ${result.action === 'updated' ? 'updated' : 'saved'} successfully in **${tier}** tier!`);
+				// Check if user is stacking (has Fire + higher tier)
+				const userRoleIds = await getMemberRoleIds(interaction);
+				const hasFire = userRoleIds.has(FIRE_ROLE_ID);
+				const highestTier = await getUserHighestTier(interaction);
+				
+				let message = `✅ Wallet ${result.action === 'updated' ? 'updated' : 'saved'} successfully in **${tier}** tier!`;
+				
+				// Add stacking info if applicable
+				if (tier === 'FCFS' && hasFire && highestTier !== 'FCFS') {
+					message += `\n\n🔥 **Fire Role Stacking Active!** You can have a different wallet in **${highestTier}** tier and another in **FCFS** tier.`;
+				}
+				
+				await interaction.editReply(message);
 			}
 		}
 	} catch (err) {

@@ -66,13 +66,14 @@ O bot oferece 3 comandos diferentes para diferentes tiers de alocação:
      - `1362770935886774284`
      - `1407649035657019463`
      - `1284341434564083763`
+     - `1411997961399046154`
    - Guarda na folha **1GTD**
 
 3. **`/setup-fcfs`** - Para utilizadores FCFS (First Come First Served)
    - Verifica se o utilizador tem algum dos seguintes role IDs:
-     - `1334873797085626398`
-     - `1408402916452208702`
-     - `1411717220605886616`
+     - `1334873797085626398` (Baby Medal)
+     - `1408402916452208702` (Blue Medal)
+     - `1411717220605886616` (Fire - **permite stacking com tiers superiores**)
    - Guarda na folha **FCFS**
 
 ### Funcionamento
@@ -111,11 +112,27 @@ O sistema implementa uma **hierarquia de prioridade** que impede utilizadores de
 3. **Utilizadores com roles FCFS** (e sem outros roles):
    - ✅ Podem submeter em: `/setup-fcfs`
 
-### Exemplo Prático:
+### 🔥 Exceção Especial: Fire Role Stacking
 
-- Se tens o role "Veteran" (2GTD) **E** um dos 6 roles GTD → Só podes submeter em `/setup-2gtd`
-- Se tens um dos 6 roles GTD **E** um dos 3 roles FCFS → Só podes submeter em `/setup-gtd`
+O role **Fire** (`1411717220605886616`) permite **stacking** - submeter wallets em múltiplos tiers:
+
+- **2GTD + Fire** → Pode submeter uma wallet em `/setup-2gtd` **E** outra wallet diferente em `/setup-fcfs`
+- **GTD + Fire** → Pode submeter uma wallet em `/setup-gtd` **E** outra wallet diferente em `/setup-fcfs`
+- **Apenas Fire** → Pode submeter apenas em `/setup-fcfs`
+
+**Importante:** As wallets são guardadas em folhas separadas e podem ser diferentes. Apenas o role Fire permite esta exceção!
+
+### Exemplos Práticos:
+
+**Sem Fire Role:**
+- Se tens o role "Veteran" (2GTD) **E** um dos 7 roles GTD → Só podes submeter em `/setup-2gtd`
+- Se tens um dos 7 roles GTD **E** um dos 3 roles FCFS → Só podes submeter em `/setup-gtd`
 - Se tens apenas um dos 3 roles FCFS → Podes submeter em `/setup-fcfs`
+
+**Com Fire Role (Stacking):**
+- Se tens 2GTD + Fire → Submetes wallet A em `/setup-2gtd` + wallet B em `/setup-fcfs` 🔥
+- Se tens GTD + Fire → Submetes wallet A em `/setup-gtd` + wallet B em `/setup-fcfs` 🔥
+- Se tens 2GTD + GTD + Fire → Submetes wallet em `/setup-2gtd` + wallet em `/setup-fcfs` (prioridade: 2GTD) 🔥
 
 **Mensagem de erro**: Se tentares submeter num tier inferior ao teu role mais alto, receberás uma mensagem com um **link direto** para o canal correto onde deves submeter.
 
