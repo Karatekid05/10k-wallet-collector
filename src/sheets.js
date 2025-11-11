@@ -202,6 +202,33 @@ export async function getWallet(discordId) {
 	return null;
 }
 
+// Get ALL wallet submissions for a user (supports stacking)
+export async function getAllWallets(discordId) {
+	await ensureSheetSetup();
+	const spreadsheetId = GOOGLE_SHEETS_SPREADSHEET_ID;
+	const wallets = [];
+	
+	// Search across all three sheets
+	for (const sheetName of Object.values(SHEET_NAMES)) {
+		const range = `${sheetName}!A2:D`;
+		const resp = await callWithRetry(() => sheetsApi.spreadsheets.values.get({ spreadsheetId, range }), 'values.get getAllWallets');
+		const rows = resp.data.values || [];
+		for (const row of rows) {
+			if (row[1] === discordId) {
+				wallets.push({
+					tier: sheetName,
+					discordUsername: row[0],
+					discordId: row[1],
+					role: row[2] ?? '',
+					wallet: row[3] ?? ''
+				});
+			}
+		}
+	}
+	
+	return wallets.length > 0 ? wallets : null;
+}
+
 export async function listWallets() {
 	await ensureSheetSetup();
 	const spreadsheetId = GOOGLE_SHEETS_SPREADSHEET_ID;

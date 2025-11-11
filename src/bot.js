@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, REST, Routes, Partials, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, InteractionType, EmbedBuilder } from 'discord.js';
-import { upsertWallet, getWallet, ensureSheetSetup } from './sheets.js';
+import { upsertWallet, getWallet, getAllWallets, ensureSheetSetup } from './sheets.js';
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.DISCORD_CLIENT_ID;
@@ -356,22 +356,37 @@ client.on('interactionCreate', async (interaction) => {
 			// Handle check status button
 			if (interaction.customId.startsWith('check_status_')) {
 				await interaction.deferReply({ ephemeral: true });
-				const record = await getWallet(interaction.user.id);
+				const wallets = await getAllWallets(interaction.user.id);
 				
-				if (!record) {
-					await interaction.editReply('You have not submitted a wallet yet.');
+				if (!wallets) {
+					await interaction.editReply('You have not submitted any wallets yet.');
 					return;
 				}
 				
 				const embed = new EmbedBuilder()
-					.setTitle('Your Wallet Submission')
+					.setTitle('Your Wallet Submissions')
+					.setDescription(`You have **${wallets.length}** wallet submission${wallets.length > 1 ? 's' : ''}`)
+					.setColor(0x2ecc71)
 					.addFields(
-						{ name: 'Discord Username', value: record.discordUsername || 'Unknown', inline: true },
-						{ name: 'Discord ID', value: record.discordId, inline: true },
-						{ name: 'Role', value: record.role || 'N/A', inline: true },
-						{ name: 'EVM Wallet', value: record.wallet || 'N/A' },
-					)
-					.setColor(0x2ecc71);
+						{ name: 'Discord Username', value: wallets[0].discordUsername || 'Unknown', inline: true },
+						{ name: 'Discord ID', value: wallets[0].discordId, inline: true },
+					);
+				
+				// Add each wallet submission as a separate field
+				wallets.forEach((wallet, index) => {
+					const tierEmoji = wallet.tier === '2GTD' ? '💎' : wallet.tier === '1GTD' ? '⭐' : '🔥';
+					embed.addFields({
+						name: `${tierEmoji} ${wallet.tier} Tier`,
+						value: `**Role:** ${wallet.role || 'N/A'}\n**Wallet:** \`${wallet.wallet || 'N/A'}\``,
+						inline: false
+					});
+				});
+				
+				// Add stacking indicator if user has multiple submissions
+				if (wallets.length > 1) {
+					embed.setFooter({ text: '🔥 Fire Role Stacking Active - You have multiple tier submissions' });
+				}
+				
 				await interaction.editReply({ embeds: [embed] });
 			}
 		}
