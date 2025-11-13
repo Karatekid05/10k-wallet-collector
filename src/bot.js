@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, REST, Routes, Partials, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, InteractionType, EmbedBuilder } from 'discord.js';
-import { upsertWallet, getWallet, getAllWallets, ensureSheetSetup } from './sheets.js';
+import { upsertWallet, getWallet, getAllWallets, ensureSheetSetup, getStatistics } from './sheets.js';
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.DISCORD_CLIENT_ID;
@@ -281,6 +281,114 @@ client.on('interactionCreate', async (interaction) => {
 							});
 						}
 					} catch {}
+				}
+			}
+			
+			// Handle /stats command
+			if (interaction.commandName === 'stats') {
+				const ADMIN_USER_IDS = [
+					'1189888338879074415', // puresoul0109
+					'412710839070752778',  // karatekid05
+				];
+				
+				// Only allow specific users to use this command
+				if (!ADMIN_USER_IDS.includes(interaction.user.id)) {
+					await interaction.reply({
+						content: '❌ You do not have permission to use this command.',
+						ephemeral: true,
+					});
+					return;
+				}
+				
+				await interaction.deferReply({ ephemeral: true });
+				
+				try {
+					const stats = await getStatistics();
+					
+					// Format the statistics message
+					let message = '📊 **Wallet Submission Statistics**\n\n';
+					
+					// 2GTD Stats
+					message += `**🏆 2GTD Tier**\n`;
+					message += `├─ Total: **${stats['2GTD'].total}** wallets\n`;
+					const roles2GTD = Object.entries(stats['2GTD'].byRole);
+					if (roles2GTD.length > 0) {
+						roles2GTD.forEach(([role, count], idx) => {
+							const prefix = idx === roles2GTD.length - 1 ? '└─' : '├─';
+							message += `${prefix} ${role}: **${count}**\n`;
+						});
+					} else {
+						message += '└─ No submissions yet\n';
+					}
+					message += '\n';
+					
+					// 1GTD Stats
+					message += `**⭐ 1GTD (GTD) Tier**\n`;
+					message += `├─ Total: **${stats['1GTD'].total}** wallets\n`;
+					const roles1GTD = Object.entries(stats['1GTD'].byRole);
+					if (roles1GTD.length > 0) {
+						roles1GTD.forEach(([role, count], idx) => {
+							const prefix = idx === roles1GTD.length - 1 ? '└─' : '├─';
+							message += `${prefix} ${role}: **${count}**\n`;
+						});
+					} else {
+						message += '└─ No submissions yet\n';
+					}
+					message += '\n';
+					
+					// FCFS Stats
+					message += `**🔥 FCFS Tier**\n`;
+					message += `├─ Total: **${stats['FCFS'].total}** wallets\n`;
+					const rolesFCFS = Object.entries(stats['FCFS'].byRole);
+					if (rolesFCFS.length > 0) {
+						rolesFCFS.forEach(([role, count], idx) => {
+							const prefix = idx === rolesFCFS.length - 1 ? '└─' : '├─';
+							message += `${prefix} ${role}: **${count}**\n`;
+						});
+					} else {
+						message += '└─ No submissions yet\n';
+					}
+					message += '\n';
+					
+					// Grand total
+					const grandTotal = stats['2GTD'].total + stats['1GTD'].total + stats['FCFS'].total;
+					message += `**📈 Total Submissions: ${grandTotal}**`;
+					
+					// Send DM to BOTH admins
+					let successCount = 0;
+					let failedUsers = [];
+					
+					for (const adminId of ADMIN_USER_IDS) {
+						try {
+							const adminUser = await client.users.fetch(adminId);
+							await adminUser.send(message);
+							successCount++;
+						} catch (dmError) {
+							console.error(`Failed to send DM to ${adminId}:`, dmError);
+							failedUsers.push(adminId);
+						}
+					}
+					
+					// Send confirmation
+					if (successCount === ADMIN_USER_IDS.length) {
+						await interaction.editReply({
+							content: '✅ Statistics sent via DM to all admins!',
+						});
+					} else if (successCount > 0) {
+						await interaction.editReply({
+							content: `⚠️ Statistics sent to ${successCount}/${ADMIN_USER_IDS.length} admins. Some DMs failed.`,
+						});
+					} else {
+						// If all DMs failed, send as ephemeral reply
+						await interaction.editReply({
+							content: `❌ Failed to send DMs. Here are the stats:\n\n${message}`,
+						});
+					}
+				} catch (error) {
+					console.error('[ERROR] Failed to get statistics:', error);
+					await interaction.editReply({
+						content: '❌ Failed to retrieve statistics. Please try again.',
+					});
 				}
 			}
 		}

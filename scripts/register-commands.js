@@ -23,6 +23,10 @@ const commands = [
 		name: 'setup-fcfs',
 		description: 'Post FCFS tier wallet submission message',
 	},
+	{
+		name: 'stats',
+		description: 'Get wallet submission statistics (admin only)',
+	},
 ];
 
 const rest = new REST({ version: '10' }).setToken(token);

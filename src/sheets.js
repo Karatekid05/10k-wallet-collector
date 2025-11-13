@@ -278,6 +278,40 @@ export async function listWalletsWithRow() {
 	return items;
 }
 
+export async function getStatistics() {
+	await ensureSheetSetup();
+	const spreadsheetId = GOOGLE_SHEETS_SPREADSHEET_ID;
+	
+	const stats = {
+		'2GTD': { total: 0, byRole: {} },
+		'1GTD': { total: 0, byRole: {} },
+		'FCFS': { total: 0, byRole: {} },
+	};
+	
+	// Collect statistics from all three sheets
+	for (const sheetName of Object.values(SHEET_NAMES)) {
+		const range = `${sheetName}!A2:D`;
+		const resp = await callWithRetry(() => sheetsApi.spreadsheets.values.get({ spreadsheetId, range }), 'values.get statistics');
+		const rows = resp.data.values || [];
+		
+		const tierKey = sheetName; // '2GTD', '1GTD', or 'FCFS'
+		stats[tierKey].total = rows.length;
+		
+		// Count by role
+		for (const row of rows) {
+			if (!row || row.length < 3) continue;
+			const roleName = row[2] ?? 'Unknown';
+			
+			if (!stats[tierKey].byRole[roleName]) {
+				stats[tierKey].byRole[roleName] = 0;
+			}
+			stats[tierKey].byRole[roleName]++;
+		}
+	}
+	
+	return stats;
+}
+
 
 
 
