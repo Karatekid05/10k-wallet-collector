@@ -32,6 +32,9 @@ const TIER_CONFIGS = {
 			'1407649035657019463',
 			'1284341434564083763',
 			'1411997961399046154',
+			'1438971031070179539',
+			'1438971832869847170',
+			'1438971608340627549',
 		],
 		commandName: 'setup-gtd',
 		channelLink: 'https://discord.com/channels/1282268775709802568/1437876707502592143',
@@ -213,6 +216,62 @@ async function registerCommands() {
 		{
 			name: 'setup-fcfs',
 			description: 'Post FCFS tier wallet submission message',
+		},
+		{
+			name: 'stats',
+			description: 'Get wallet submission statistics (admin only)',
+		},
+		{
+			name: 'rank',
+			description: 'Check your server rank and XP',
+			options: [
+				{
+					name: 'member',
+					description: 'The member to check rank for (optional)',
+					type: 6, // USER type
+					required: false,
+				},
+			],
+		},
+		{
+			name: 'give-xp',
+			description: 'Give XP to a user (admin only)',
+			options: [
+				{
+					name: 'member',
+					description: 'The member to give XP to',
+					type: 6, // USER type
+					required: true,
+				},
+				{
+					name: 'amount',
+					description: 'Amount of XP to give',
+					type: 4, // INTEGER type
+					required: true,
+				},
+			],
+		},
+		{
+			name: 'remove-xp',
+			description: 'Remove XP from a user (admin only)',
+			options: [
+				{
+					name: 'member',
+					description: 'The member to remove XP from',
+					type: 6, // USER type
+					required: true,
+				},
+				{
+					name: 'amount',
+					description: 'Amount of XP to remove',
+					type: 4, // INTEGER type
+					required: true,
+				},
+			],
+		},
+		{
+			name: 'leaderboard',
+			description: 'View the server XP leaderboard',
 		},
 	];
 	const rest = new REST({ version: '10' }).setToken(token);

@@ -27,6 +27,58 @@ const commands = [
 		name: 'stats',
 		description: 'Get wallet submission statistics (admin only)',
 	},
+	{
+		name: 'rank',
+		description: 'Check your server rank and XP',
+		options: [
+			{
+				name: 'member',
+				description: 'The member to check rank for (optional)',
+				type: 6, // USER type
+				required: false,
+			},
+		],
+	},
+	{
+		name: 'give-xp',
+		description: 'Give XP to a user (admin only)',
+		options: [
+			{
+				name: 'member',
+				description: 'The member to give XP to',
+				type: 6, // USER type
+				required: true,
+			},
+			{
+				name: 'amount',
+				description: 'Amount of XP to give',
+				type: 4, // INTEGER type
+				required: true,
+			},
+		],
+	},
+	{
+		name: 'remove-xp',
+		description: 'Remove XP from a user (admin only)',
+		options: [
+			{
+				name: 'member',
+				description: 'The member to remove XP from',
+				type: 6, // USER type
+				required: true,
+			},
+			{
+				name: 'amount',
+				description: 'Amount of XP to remove',
+				type: 4, // INTEGER type
+				required: true,
+			},
+		],
+	},
+	{
+		name: 'leaderboard',
+		description: 'View the server XP leaderboard',
+	},
 ];
 
 const rest = new REST({ version: '10' }).setToken(token);
