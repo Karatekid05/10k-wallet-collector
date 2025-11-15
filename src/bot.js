@@ -32,9 +32,6 @@ const TIER_CONFIGS = {
 			'1407649035657019463',
 			'1284341434564083763',
 			'1411997961399046154',
-			'1438971031070179539',
-			'1438971832869847170',
-			'1438971608340627549',
 		],
 		commandName: 'setup-gtd',
 		channelLink: 'https://discord.com/channels/1282268775709802568/1437876707502592143',
@@ -44,6 +41,9 @@ const TIER_CONFIGS = {
 		roleIds: [
 			'1334873797085626398',
 			'1408402916452208702',
+			'1438971031070179539',
+			'1438971832869847170',
+			'1438971608340627549',
 			FIRE_ROLE_ID, // Fire role - allows stacking
 		],
 		commandName: 'setup-fcfs',
@@ -55,21 +55,21 @@ const TIER_CONFIGS = {
 async function getMemberRoleIds(interaction) {
 	if (!interaction.guild) return new Set();
 	const member = interaction.member;
-	
+
 	// Try to read roles from the interaction payload
 	if (member && member.roles) {
 		// Cached GuildMember
 		if ('cache' in member.roles) {
 			try {
 				return new Set(member.roles.cache.map((r) => r.id));
-			} catch {}
+			} catch { }
 		}
 		// Raw roles array from API payload
 		if (Array.isArray(member.roles)) {
 			return new Set(member.roles);
 		}
 	}
-	
+
 	// Fallback: fetch full member
 	try {
 		const fullMember = await interaction.guild.members.fetch(interaction.user.id);
@@ -94,7 +94,7 @@ async function getRoleName(interaction, roleId) {
 async function getUserTierRole(interaction, tierConfig) {
 	try {
 		const userRoleIds = await getMemberRoleIds(interaction);
-		
+
 		// Find first matching role
 		for (const roleId of tierConfig.roleIds) {
 			if (userRoleIds.has(roleId)) {
@@ -111,31 +111,31 @@ async function getUserTierRole(interaction, tierConfig) {
 // Get the highest tier the user has access to (based on priority)
 async function getUserHighestTier(interaction) {
 	const userRoleIds = await getMemberRoleIds(interaction);
-	
+
 	// Check tiers in priority order (highest to lowest)
 	// Priority: 2GTD > GTD > FCFS
-	
+
 	// Check 2GTD (highest priority)
 	for (const roleId of TIER_CONFIGS['2GTD'].roleIds) {
 		if (userRoleIds.has(roleId)) {
 			return '2GTD';
 		}
 	}
-	
+
 	// Check GTD (medium priority)
 	for (const roleId of TIER_CONFIGS['GTD'].roleIds) {
 		if (userRoleIds.has(roleId)) {
 			return 'GTD';
 		}
 	}
-	
+
 	// Check FCFS (lowest priority)
 	for (const roleId of TIER_CONFIGS['FCFS'].roleIds) {
 		if (userRoleIds.has(roleId)) {
 			return 'FCFS';
 		}
 	}
-	
+
 	return null; // User has no qualifying roles
 }
 
@@ -144,48 +144,48 @@ async function canUserSubmitToTier(interaction, targetTier) {
 	const userRoleIds = await getMemberRoleIds(interaction);
 	const hasFire = userRoleIds.has(FIRE_ROLE_ID);
 	const highestTier = await getUserHighestTier(interaction);
-	
+
 	if (!highestTier) {
 		return { allowed: false, reason: 'no_role' };
 	}
-	
+
 	// Define tier priority (lower number = higher priority)
 	const tierPriority = {
 		'2GTD': 1,
 		'GTD': 2,
 		'FCFS': 3,
 	};
-	
+
 	const userPriority = tierPriority[highestTier];
 	const targetPriority = tierPriority[targetTier];
-	
+
 	// SPECIAL CASE: Fire role allows stacking
 	// Users with 2GTD/GTD + Fire can ALSO submit to FCFS
 	if (targetTier === 'FCFS' && hasFire && userPriority < targetPriority) {
 		// User has higher tier (2GTD or GTD) + Fire role
 		// Allow them to submit to FCFS as well (stacking)
-		return { 
-			allowed: true, 
+		return {
+			allowed: true,
 			tier: 'FCFS',
 			isStacking: true,
 			primaryTier: highestTier
 		};
 	}
-	
+
 	if (userPriority < targetPriority) {
 		// User has a higher tier, cannot submit to lower tier (unless Fire exception above)
-		return { 
-			allowed: false, 
+		return {
+			allowed: false,
 			reason: 'higher_tier_available',
 			highestTier: highestTier
 		};
 	}
-	
+
 	if (userPriority === targetPriority) {
 		// User can submit to their own tier
 		return { allowed: true, tier: highestTier };
 	}
-	
+
 	// User priority is higher than target (shouldn't happen in normal flow)
 	return { allowed: false, reason: 'invalid_tier' };
 }
@@ -295,12 +295,12 @@ client.on('interactionCreate', async (interaction) => {
 	try {
 		if (interaction.isChatInputCommand()) {
 			console.log(`[COMMAND] ${interaction.user.username} used /${interaction.commandName}`);
-			
+
 			// Handle setup commands for each tier
 			const tierConfig = Object.values(TIER_CONFIGS).find(
 				(config) => config.commandName === interaction.commandName
 			);
-			
+
 			if (tierConfig) {
 				try {
 					// Respond immediately - we don't need to wait for anything
@@ -327,29 +327,29 @@ client.on('interactionCreate', async (interaction) => {
 						components: [row],
 						allowedMentions: { parse: [] },
 					});
-					
+
 					console.log(`[SUCCESS] Setup message sent for ${tierConfig.tier}`);
-					
+
 				} catch (err) {
 					console.error(`[ERROR] Exception in setup command:`, err);
 					try {
 						if (!interaction.replied && !interaction.deferred) {
-							await interaction.reply({ 
-								content: '❌ An error occurred. Please try again.', 
-								ephemeral: true 
+							await interaction.reply({
+								content: '❌ An error occurred. Please try again.',
+								ephemeral: true
 							});
 						}
-					} catch {}
+					} catch { }
 				}
 			}
-			
+
 			// Handle /stats command
 			if (interaction.commandName === 'stats') {
 				const ADMIN_USER_IDS = [
 					'1189888338879074415', // puresoul0109
 					'412710839070752778',  // karatekid05
 				];
-				
+
 				// Only allow specific users to use this command
 				if (!ADMIN_USER_IDS.includes(interaction.user.id)) {
 					await interaction.reply({
@@ -358,15 +358,15 @@ client.on('interactionCreate', async (interaction) => {
 					});
 					return;
 				}
-				
+
 				await interaction.deferReply({ ephemeral: true });
-				
+
 				try {
 					const stats = await getStatistics();
-					
+
 					// Format the statistics message
 					let message = '📊 **Wallet Submission Statistics**\n\n';
-					
+
 					// 2GTD Stats
 					message += `**🏆 2GTD Tier**\n`;
 					message += `├─ Total: **${stats['2GTD'].total}** wallets\n`;
@@ -380,7 +380,7 @@ client.on('interactionCreate', async (interaction) => {
 						message += '└─ No submissions yet\n';
 					}
 					message += '\n';
-					
+
 					// 1GTD Stats
 					message += `**⭐ 1GTD (GTD) Tier**\n`;
 					message += `├─ Total: **${stats['1GTD'].total}** wallets\n`;
@@ -394,7 +394,7 @@ client.on('interactionCreate', async (interaction) => {
 						message += '└─ No submissions yet\n';
 					}
 					message += '\n';
-					
+
 					// FCFS Stats
 					message += `**🔥 FCFS Tier**\n`;
 					message += `├─ Total: **${stats['FCFS'].total}** wallets\n`;
@@ -408,15 +408,15 @@ client.on('interactionCreate', async (interaction) => {
 						message += '└─ No submissions yet\n';
 					}
 					message += '\n';
-					
+
 					// Grand total
 					const grandTotal = stats['2GTD'].total + stats['1GTD'].total + stats['FCFS'].total;
 					message += `**📈 Total Submissions: ${grandTotal}**`;
-					
+
 					// Send DM to BOTH admins
 					let successCount = 0;
 					let failedUsers = [];
-					
+
 					for (const adminId of ADMIN_USER_IDS) {
 						try {
 							const adminUser = await client.users.fetch(adminId);
@@ -427,7 +427,7 @@ client.on('interactionCreate', async (interaction) => {
 							failedUsers.push(adminId);
 						}
 					}
-					
+
 					// Send confirmation
 					if (successCount === ADMIN_USER_IDS.length) {
 						await interaction.editReply({
@@ -454,23 +454,23 @@ client.on('interactionCreate', async (interaction) => {
 
 		if (interaction.isButton()) {
 			console.log(`[BUTTON] ${interaction.user.username} clicked: ${interaction.customId}`);
-			
+
 			// Handle submit wallet button
 			if (interaction.customId.startsWith('submit_wallet_')) {
 				const tier = interaction.customId.replace('submit_wallet_', '');
 				const tierConfig = TIER_CONFIGS[tier];
-				
+
 				if (!tierConfig) {
-					await interaction.reply({ 
-						content: 'Invalid tier configuration.', 
-						ephemeral: true 
+					await interaction.reply({
+						content: 'Invalid tier configuration.',
+						ephemeral: true
 					});
 					return;
 				}
-				
+
 				// Check if user can submit to this tier (with hierarchy check)
 				const canSubmit = await canUserSubmitToTier(interaction, tier);
-				
+
 				if (!canSubmit.allowed) {
 					if (canSubmit.reason === 'no_role') {
 						await interaction.reply({
@@ -491,7 +491,7 @@ client.on('interactionCreate', async (interaction) => {
 					}
 					return;
 				}
-				
+
 				// Get user's role name for this tier
 				const userRole = await getUserTierRole(interaction, tierConfig);
 				if (!userRole) {
@@ -501,7 +501,7 @@ client.on('interactionCreate', async (interaction) => {
 					});
 					return;
 				}
-				
+
 				// Show modal for wallet submission
 				const modal = new ModalBuilder()
 					.setCustomId(`wallet_modal_${tier}`)
@@ -524,12 +524,12 @@ client.on('interactionCreate', async (interaction) => {
 			if (interaction.customId.startsWith('check_status_')) {
 				await interaction.deferReply({ ephemeral: true });
 				const wallets = await getAllWallets(interaction.user.id);
-				
+
 				if (!wallets) {
 					await interaction.editReply('You have not submitted any wallets yet.');
 					return;
 				}
-				
+
 				const embed = new EmbedBuilder()
 					.setTitle('Your Wallet Submissions')
 					.setDescription(`You have **${wallets.length}** wallet submission${wallets.length > 1 ? 's' : ''}`)
@@ -538,7 +538,7 @@ client.on('interactionCreate', async (interaction) => {
 						{ name: 'Discord Username', value: wallets[0].discordUsername || 'Unknown', inline: true },
 						{ name: 'Discord ID', value: wallets[0].discordId, inline: true },
 					);
-				
+
 				// Add each wallet submission as a separate field
 				wallets.forEach((wallet, index) => {
 					const tierEmoji = wallet.tier === '2GTD' ? '💎' : wallet.tier === '1GTD' ? '⭐' : '🔥';
@@ -548,12 +548,12 @@ client.on('interactionCreate', async (interaction) => {
 						inline: false
 					});
 				});
-				
+
 				// Add stacking indicator if user has multiple submissions
 				if (wallets.length > 1) {
 					embed.setFooter({ text: '🔥 Fire Role Stacking Active - You have multiple tier submissions' });
 				}
-				
+
 				await interaction.editReply({ embeds: [embed] });
 			}
 		}
@@ -561,18 +561,18 @@ client.on('interactionCreate', async (interaction) => {
 		if (interaction.type === InteractionType.ModalSubmit && interaction.customId.startsWith('wallet_modal_')) {
 			console.log(`[MODAL] ${interaction.user.username} submitted wallet for ${interaction.customId}`);
 			await interaction.deferReply({ ephemeral: true });
-			
+
 			const tier = interaction.customId.replace('wallet_modal_', '');
 			const tierConfig = TIER_CONFIGS[tier];
-			
+
 			if (!tierConfig) {
 				await interaction.editReply('❌ Invalid tier configuration.');
 				return;
 			}
-			
+
 			// Re-verify user can submit to this tier (double-check in case roles changed)
 			const canSubmit = await canUserSubmitToTier(interaction, tier);
-			
+
 			if (!canSubmit.allowed) {
 				if (canSubmit.reason === 'no_role') {
 					await interaction.editReply(`❌ You don't have any of the required roles to submit a wallet.`);
@@ -586,26 +586,26 @@ client.on('interactionCreate', async (interaction) => {
 				}
 				return;
 			}
-			
+
 			// Get user's role name
 			const userRoleName = await getUserTierRole(interaction, tierConfig);
 			if (!userRoleName) {
 				await interaction.editReply(`❌ Could not fetch your role information. Please try again.`);
 				return;
 			}
-			
+
 			const wallet = interaction.fields.getTextInputValue('wallet_address').trim();
-			
+
 			// Basic EVM address validation
 			const isLikelyEvm = /^0x[a-fA-F0-9]{40}$/i.test(wallet);
 			if (!isLikelyEvm) {
 				await interaction.editReply('❌ Invalid EVM address. Please submit a valid 0x... address (42 characters).');
 				return;
 			}
-			
+
 			const discordId = interaction.user.id;
 			const discordUsername = interaction.user.username;
-			
+
 			const result = await upsertWallet({
 				discordId,
 				discordUsername,
@@ -613,7 +613,7 @@ client.on('interactionCreate', async (interaction) => {
 				tier: tierConfig.tier,
 				roleName: userRoleName,
 			});
-			
+
 			if (result.action === 'skipped') {
 				await interaction.editReply('❌ Failed to save wallet. Please try again.');
 			} else {
@@ -621,14 +621,14 @@ client.on('interactionCreate', async (interaction) => {
 				const userRoleIds = await getMemberRoleIds(interaction);
 				const hasFire = userRoleIds.has(FIRE_ROLE_ID);
 				const highestTier = await getUserHighestTier(interaction);
-				
+
 				let message = `✅ Wallet ${result.action === 'updated' ? 'updated' : 'saved'} successfully in **${tier}** tier!`;
-				
+
 				// Add stacking info if applicable
 				if (tier === 'FCFS' && hasFire && highestTier !== 'FCFS') {
 					message += `\n\n🔥 **Fire Role Stacking Active!** You can have a different wallet in **${highestTier}** tier and another in **FCFS** tier.`;
 				}
-				
+
 				await interaction.editReply(message);
 			}
 		}
@@ -642,7 +642,7 @@ client.on('interactionCreate', async (interaction) => {
 			} else if (interaction.isRepliable()) {
 				await interaction.reply({ content: 'There was an error. Please try again.', ephemeral: true });
 			}
-		} catch {}
+		} catch { }
 	}
 });
 
